@@ -1,0 +1,26 @@
+[global_config]
+  suppress_multiple_term_dialog = True
+[keybindings]
+  broadcast_all = None
+  broadcast_group = None
+  broadcast_off = None
+  close_term = <Alt>w
+  split_horiz = <Alt>c
+  split_vert = <Alt>d
+[layouts]
+  [[default]]
+    [[[child1]]]
+      parent = window0
+      profile = solarized-dark
+      type = Terminal
+    [[[window0]]]
+      parent = ""
+      type = Window
+[plugins]
+[profiles]
+  [[default]]
+    background_color = "#002b36"
+    background_image = None
+    font = Courier 10 Pitch 14
+    foreground_color = "#839496"
+    use_system_font = False
