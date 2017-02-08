@@ -5,6 +5,12 @@
   broadcast_group = None
   broadcast_off = None
   close_term = <Alt>w
+  edit_window_title = None
+  move_tab_left = None
+  move_tab_right = None
+  new_tab = <Alt>t
+  next_tab = <Alt>period
+  prev_tab = <Alt>comma
   split_horiz = <Alt>c
   split_vert = <Alt>d
 [layouts]
