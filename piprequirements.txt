@@ -1,13 +1,13 @@
 adium-theme-ubuntu==0.3.4
 backports.shutil-get-terminal-size==1.0.0
-basemap==1.0.7
+#basemap==1.0.7
 blessings==1.6
 bpython==0.15
-ccsm==0.9.12.2
+#ccsm==0.9.12.2
 cement==2.10.2
 cffi==1.8.2
 cmocean==1.1
-compizconfig-python==0.9.12.2
+#compizconfig-python==0.9.12.2
 cryptography==1.5
 curtsies==0.2.6
 cycler==0.10.0
