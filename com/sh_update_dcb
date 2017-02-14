@@ -1,0 +1,106 @@
+#!/bin/csh -f
+#
+#doc Get monthly DCB values from AIUB and add to dcb.dat
+#doc 
+#
+# Script to get monthly DCB values from AIUB and add to dcb.dat
+# Uses wget and creates www.aiub.unibe.ch/ionosphere/p1c1.dcb locally,
+# then runs gamit/utils/dcbtab to add this file to dcb.dat.  Updated
+# file is created as dcb.dat.new, which must be renamed before use.
+# 
+#     
+# Written by R King 12 Oct 2004
+
+######################## INSTRUCTIONS #############################
+# See if arguments passed
+if( $#argv == 0 ) then
+  echo "===================================================================================="
+  echo " Get monthly DCB values from AIUB and update tables/dcb.dat "
+  echo "  "
+  echo " Usage: sh_update_dcb -o <Y/N> "
+  echo "  "
+  echo "        <Y/N>  Yes or No to overwrite an existing p1c1.dcb file    [Required] "     
+  echo " "
+  echo " Creates dcb.dat.new (must rename before using) "
+  echo "  "
+  echo "===================================================================================="
+  exit
+endif 
+
+##################### SET UP DEFAULTS #############################   
+set o  = 'Y'
+
+##################### DECIPHER COMMAND LINE #######################   
+while ($#argv > 0 )
+  set input = ( $argv )
+  switch($input[1])
+    case -o:
+      set overwrite  = $input[2]  
+    breaksw 
+  endsw
+  if ( $#argv > 0 ) shift argv
+end
+alldone:
+
+##################### READ THE FTP_ADDRESSES TEMPLATE ############################    
+#    
+set ftp_info = `sh_get_ftp_info -archive aiub -type dcb`  
+
+while ($#ftp_info > 0 )
+  set input = ( $ftp_info )
+  switch($input[1])
+    case -ftpsite:
+      set ftpsite  = $input[2]  
+    breaksw 
+    case -ftplogin:
+      set ftplogin  = (`echo $ftp_info | cut -d- -f2`); shift ftplogin 
+    breaksw 
+    case -ftpdir:
+      set ftpdir  = $input[2]  
+    breaksw 
+    case -ftpcmd:
+      set ftpcmd  = (`echo $ftp_info | cut -d% -f2`); shift ftpcmd  
+    breaksw 
+  endsw
+  if ( $#ftp_info > 0 ) shift ftp_info
+end
+
+#################### DO the FTP ###################################
+                     
+# Set up the ftp script
+if (`echo $ftpcmd | awk '{print $1}'` == 'ncftp') then
+  set getcmd = 'get -f -z'
+  echo "binary" >! ftp.inp 
+  echo "passive" >! ftp.inp
+
+else
+  set getcmd = 'get'
+  echo "user $ftplogin" >! ftp.inp  
+  echo "binary" >> ftp.inp   
+  echo "passive" >> ftp.inp
+
+endif
+
+echo $getcmd P1C1.DCB from $ftpsite
+if ( -e P1C1.DCB) \rm P1C1.DCB
+echo $ftpcmd
+echo " ftping to $ftpsite ....... "  
+echo "cd $ftpdir" >> ftp.inp
+echo pwd                                    >> ftp.inp
+echo $getcmd P1C1.DCB >> ftp.inp 
+$ftpcmd < ftp.inp
+
+############## Add the new values to the file #################3 
+
+# program gamit/utils/dcbtab creates 'dcb.dat.new' by concatenating 'dcb.dat' and 'p1c1.dcb' 
+      
+if ( $o == "Y" ) then  
+ \mv P1C1.DCB p1c1.dcb 
+else
+ mv P1C1.DCB p1c1.dcb 
+endif    
+# remove the old dcb.dat.new to avoid confusion
+ \rm dcb.dat.new
+dcbtab
+
+exit

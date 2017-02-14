@@ -1,0 +1,187 @@
+#!/bin/csh -f
+#
+#doc Get IONEX files by day number, source, and archive
+#doc                                               
+#
+# R King based on sh_get_orbits by S McClusky
+# MOD TAH 130620: Fixed multiday logical.  As coded only one-day downloaded.
+
+######################## INSTRUCTIONS #############################
+# See if arguments passed
+if( $#argv == 0 ) then
+  echo "====================================================================================="
+  echo " Get IONEX files from CDDIS archive  " 
+  echo "  "
+  echo " Usage: sh_get_ion -archive <archive> -yr <yr> -doy <doy> -ndays <num> -multiday " 
+  echo "                      -ions <source> -ftp_prog <ftp/ncftp>  "
+  echo "  "
+  echo " Where: <archive> Either cddis or igni [Defautl cddis] "
+  echo "        <yr> 4 char year of IONEX data requested  [Required] "
+  echo "        <doy> 3 char day of year of IONEX data requested  [Required] " 
+  echo "        <num> Number of consecutive days of data to retreive  [Default 1] "
+  echo "        <multiday> Form a multiday IONEX file from downloaded files (not yet implemented)" 
+  echo "        <f/r/p> The precision of ion map requested.  [Default f] "
+  echo "                  where f=final, r=rapid, p=predicted "
+  echo "        <source> IONEX file to be download  [Default igsg] "
+  echo "                 available at cddis: igsg igrg codg corg jplg jprg upcg uprg" 
+  echo "                 available at igni: all above + esag esrg "
+  echo "        <ftp/ncftp> choose the ftp program to be used [default is ftp]"
+  echo "  "      
+  echo " Examples: sh_get_ion -yr 1998 -doy 235  "
+  echo "           sh_get_ion -yr 1998 -doy 235 -ions codg "
+  echo "           sh_get_ion -yr 1998 -doy 235 -ndays 7 -ftp_prog ncftp"
+  echo "  "
+  echo "====================================================================================="
+  exit
+endif 
+
+##################### SET UP DEFAULTS #############################   
+#
+# Setup necessary paths and filenames 
+set year = ''
+set yr = ''
+set doy = ''
+set site = ''
+set numd = 1
+set archive = cddis
+set ions = igsg
+set ftp_prog = 'ftp -inv'
+set multiday = no
+set multidaylist = ''
+
+##################### DECIPHER COMMAND LINE #######################   
+while ($#argv > 0 )
+  set input = ( $argv )
+  switch($input[1])
+    case -a*:
+      set archive  = $input[2]  
+    breaksw 
+    case -nd*:
+      set numd = $input[2] 
+    breaksw 
+    case -y*:
+      set year = $input[2]
+# Variable yr[1] = 4 char yr, yr[2] = 2 char yr, yr[3] = 1 char yr
+      set yr = `sh_year -year $year`
+    breaksw 
+    case -d*:
+      set doy = $input[2]  
+    breaksw 
+    case -ion*:
+      set ions = $input[2]  
+    breaksw 
+    case -ftp_prog:
+      set ftp_prog = $input[2]  
+    breaksw 
+    case -mu*:
+      set multiday = yes 
+    breaksw 
+ endsw
+  if ( $#argv > 0 ) shift argv
+end
+alldone:
+##################### READ THE FTP_INFO TEMPLATE ############################    
+# 
+echo "ftp_info = sh_get_ftp_info -archive $archive -type ion"
+set ftp_info = `sh_get_ftp_info -archive $archive -type ion`
+
+while ($#ftp_info > 0 )
+  set input = ( $ftp_info )
+  switch($input[1])
+    case -ftpsite:
+      set ftpsite  = $input[2]  
+    breaksw 
+    case -ftplogin:
+      set ftplogin  = (`echo $ftp_info | cut -d- -f2`); shift ftplogin 
+    breaksw 
+    case -ftpdir:
+      set ftpdir  = $input[2]  
+    breaksw 
+    case -ftpcmd:
+      set ftpcmd  = (`echo $ftp_info | cut -d% -f2`); shift ftpcmd  
+    breaksw 
+  endsw
+  if ( $#ftp_info > 0 ) shift ftp_info
+end
+
+echo "Information extracted from ftp_info"
+echo "########################################"
+echo "ftpsite $ftpsite"
+echo "ftplogin $ftplogin"
+echo "ftpdir $ftpdir"
+echo "ftpcmd $ftpcmd"
+echo "########################################"
+
+##################### GET THE JOB DONE ############################   
+
+echo "Getting requested IONEX files "
+
+# Set timestamp hostname variable
+set ts = "`hostname`:`date +"%H%M%S"`"
+
+#Check required fields
+if ( ${year} == '' || ${doy} == '' ) then
+  echo "Required fields not complete:- yr: $year doy: $doy --Stop "
+  exit
+endif 
+
+# Check if ncftp is requested
+if ( `echo $ftp_prog | awk '{print $1}'` == 'ncftp' ) then
+  if (`echo $ftpcmd | awk '{print $1}'` == 'ftp') then
+    set ftpcmd = `echo $ftp_prog $ftpsite` 
+    echo "-ftp_prog = ncftp requested, ftpcmd now: $ftpcmd" 
+  endif
+endif
+
+# Set up the ftp script
+if (`echo $ftpcmd | awk '{print $1}'` == 'ftp') then 
+  echo "user $ftplogin" >! tmp.get.$ts  
+  echo "binary" >> tmp.get.$ts
+  set getcmd = 'get'
+else
+  echo "binary" >! tmp.get.$ts
+  set getcmd = 'get -f -z'
+endif
+
+# Set up loop on days
+#@ sday = ${doy} - 1
+@ sday = `echo "ibase=10; ${doy} - 1" | bc`
+#@ count = ${numd}
+@ count = `echo "ibase=10; ${numd}" | bc`
+
+echo "user $ftplogin" >! tmp.get.$ts  
+echo "binary" >> tmp.get.$ts
+
+while ( ${count} )
+  set sday = `echo ${sday} |  awk '{printf "%03d \n", $1+1 }'`
+  @ count = ${count} - 1
+# Set up the ftp script       
+#  echo "user $ftplogin" >! tmp.get.$ts  
+#  echo "binary" >> tmp.get.$ts
+  set getcmd = 'get'
+  set directory = `echo $ftpdir | sed s/"YYYY"/$yr[1]/ | sed s/"YY"/$yr[2]/ | sed s/"DDD"/${sday}/ | sed s/"SSSS"/${site}/ `
+  echo "cd $directory" >> tmp.get.$ts
+  echo  "$getcmd ${ions}${sday}0.${yr[2]}i.Z"  >> tmp.get.$ts  
+# This will end the ftp session
+#  echo 'quit' >> tmp.get.$ts
+end
+echo 'quit' >> tmp.get.$ts
+        
+# Execute the ftp script
+           
+set log = `date "+get_ion_${archive}_%y%m%d:%H%M.log"` 
+cat tmp.get.$ts >! $log
+echo ' ' >> $log
+echo '--------------------' >> $log     
+$ftpcmd < tmp.get.$ts | grep -v '^230' >> $log
+
+# Now uncompress the IONEX fles
+grep '^get ' tmp.get.$ts | awk '{print "uncompress -f ",$NF}' >! tmp.unc.$ts
+csh tmp.unc.$ts >>& $log
+
+
+#Clean up
+\rm tmp.get.$ts tmp.unc.$ts
+
+# Thats all.
+exit

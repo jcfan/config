@@ -1,0 +1,39 @@
+10c10
+< #  Last modified 2011/06/10 by M. Floyd
+---
+> #  Last modified 2010/01/27 by R. King and S. McClusky  
+137c137
+< echo "Sh_gamit Version 10.4 (2011/1/17)"
+---
+> echo "Sh_gamit Version 10.3 (2009/12/08)"
+307,309c307
+< #        while ( $count <= $argv[4] )   Following is Shimada change 110117
+<         set last_day = `echo "ibase=10; ${argv[4]}" | bc`
+<         while ( $count <= $last_day )
+---
+>         while ( $count <= $argv[4] )
+879,881c877
+<      echo "Maximum fit rms for including a satellite $max_fit_tol  m"  
+< #    MOD RWK 110221: May need to link tables if not invoking sh_get_orbits
+<      links.arc J2000 ${yr[1]} ${eops} >& /dev/null
+---
+>      echo "Maximum fit rms for including a satellite $max_fit_tol  m"
+1150d1145
+<         ( sh_crx2rnx -f ????${rxday}[0-9].${yr[2]}d.bz2 ????${rxday}[0-9].${yr[2]}d ) >& /dev/null
+1152c1147
+<         ( \rm ????${rxday}[0-9].${yr[2]}d.Z  ????${rxday}[0-9].${yr[2]}d.gz ????${rxday}[0-9].${yr[2]}d.bz2 ????${rxday}[0-9].${yr[2]}d ) >& /dev/null
+---
+>         ( \rm ????${rxday}[0-9].${yr[2]}d.Z  ????${rxday}[0-9].${yr[2]}d.gz ????${rxday}[0-9].${yr[2]}d ) >& /dev/null
+1157,1162c1152
+<         # Modified by M. Floyd (2011/06/10, MIT)
+<         # to use tr instead of potentially unavailable dos2unix
+<         #if ( $num != 0 ) dos2unix $rxf $rxf
+<         if ( $num != 0 ) then
+<           tr -d '\r' < $rxf > $rxf.tmp && mv -f $rxf.tmp $rxf
+<         endif
+---
+>         if ( $num != 0 ) dos2unix $rxf $rxf
+1180c1170
+<     set batfilnm = "f${expt}$yr[3].${doy}"
+---
+>     set batfilnm = "f${expts}$yr[3].${doy}"

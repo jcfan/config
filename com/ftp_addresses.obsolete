@@ -1,0 +1,26 @@
+# SOPAC ftp site
+ set ftpsopac = 'garner.ucsd.edu'
+ set sopacuser = 'anonymous'
+# CDDIS ftp site
+ set ftpcddis = 'cddisa.gsfc.nasa.gov'
+ set cddisuser = 'anonymous'
+# UNAVCO ftp site
+# MOD TAH 020510: Update Unavco archive site name
+# set ftpunavco = 'archive.unavco.ucar.edu'
+ set ftpunavco = 'data-out.unavco.ucar.edu'
+ set unavcouser = 'anonymous'
+# Added Unavco L1 site (same site but different directory)
+ set ftpunavcol1 = 'data-out.unavco.org'
+ set unavcol1user = 'anonymous'
+# IGS CB ftp site
+ set ftpigscb = 'igscb.jpl.nasa.gov'
+ set igscbuser = 'anonymous'
+# USNO ftp site
+ set ftpusno = 'maia.usno.navy.mil'
+ set usnouser = 'anonymous'
+# BKG EUREF ftp site
+ set ftpbkg = 'igs.ifag.de'
+ set bkguser = 'anonymous'
+# Other ftp site
+ set ftpother = 'garner.ucsd.edu'
+ set otheruser = 'anonymous'

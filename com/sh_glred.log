@@ -1,0 +1,38 @@
+Input options -s 2009 070 2009 099 -ncomb 30 -expt emed -local -net medi mnet balk iber MIT -opt LB LC G
+No process.defaults file found at: /net/chandler/data30/rwk/active/com/tables/process.defaults
+Running sh_glred under default configuration
+No sites.defaults file found at: /net/chandler/data30/rwk/active/com/tables/sites.defaults 
+Running sh_glred using default site configuration
+Checking and making required directories
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+ls: No match.
+No local h-file ( /net/chandler/data30/rwk/active/com/099/h????a.09099 ) within this combination span: 2009 070 --> 2009 099
+Skipping this combination...

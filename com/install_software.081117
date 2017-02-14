@@ -1,0 +1,328 @@
+#!/bin/csh
+
+# Script to install GAMIT and GLOBK, starting from compressed tarfiles
+# of the directories.   R. King 21 August 1996.  
+# Last changed by S. McClusky 29 Septebmer 2000 
+# Last changed by R. King 3 October 2000
+# Last changed for incremental updates by S. McClusky and R. King 27 February 2001
+
+##################### SET UP DEFAULTS #############################   
+set mypath = `pwd`
+set compiler = ''
+set install_exe = 'no'
+set exe_files = ''
+set help = 'no'
+
+##################### DECIPHER COMMAND LINE #######################   
+while ($#argv > 0 )
+  set input = ( $argv )
+  switch($input[1])
+    case -h*:
+      set help = yes 
+    breaksw 
+    case -c:
+      set compiler = $argv[2] 
+    breaksw 
+    case -exe:
+       set install_exe='yes'
+    breaksw
+  endsw
+  if ( $#argv > 0 ) shift argv
+end
+alldone:
+##################### GET THE JOB DONE ############################
+# Any help required
+if ( $help == 'yes') then 
+  echo "The install_software script will install the GAMIT/GLOBK software in: ${mypath}."
+  echo "Prior to running this script the user must have downloaded the gamit/globk distribution."
+  echo " "
+  echo "Options accepted by install_software are:"
+  echo " "
+  echo "-c compiler"
+  echo "-exe"
+  echo " "
+  echo "Where :-"
+  echo "       -c compiler is set only if the user does NOT want to build "
+  echo "       the GAMIT/GLOBK software using the default compiler (gftn),"
+  echo "       but instead using some other compiler . The file "
+  echo "       ${mypath}/libraries/Makefile.config MUST still be "
+  echo "       modified manually to reflect this new compiler selection and "
+  echo "       the necessary compiler flags. "
+  echo " "
+  echo "       -exe is used if the user wants to only install the precompiled executables "
+  echo "       and necessary auxillary files needed to run GAMIT and GLOBK. "
+  exit
+endif
+
+# Unpack distribution and ask the user some setup questions. 
+echo " "
+echo GAMIT and GLOBK to be installed into $mypath  
+echo " "
+echo "If you need help with command line options type CTL_C now and type "
+echo "install_software -help on the command line"
+echo "  "
+echo "The compressed tarfiles will be removed after extraction of the "
+echo "directories, but except for that, the script may be stopped and"
+echo "rerun safely from any point.  Tarfiles to be uncompressed:" 
+echo " "  
+set files = `ls *.Z *.gz *.tar | grep -v "incremental_updates" | grep -v "exe"`
+echo "    $files"
+echo " "    
+echo "Continue ? (y/n)"
+set ans = $<
+if ( $ans == '' ) set ans = 'y'
+if ( $ans == 'n' ) exit
+
+echo " "
+echo ".. uncompressing and extracting the directories:"
+echo " "  
+foreach f ($files)
+   if ( -e $f ) then 
+     if ( $f:e == 'Z' ) then
+       zcat $f | tar -xvf -  
+     else if ( $f:e == 'gz' ) then
+       gunzip -c $f | tar -xvf -
+     else if ( $f:e == 'tar' ) then
+       tar -xvf $f
+     else
+       echo "Unknown file type $f NOT extracted"
+     endif 
+     \rm -f $f 
+   endif
+end 
+
+# Apply incremental updates if required
+set inc_updates_file = ''
+set inc_updates_file = `ls incremental_updates*.Z incremental_updates*.gz incremental_updates*.tar |& grep -v "No match"`
+if ( $#inc_updates_file > 0 ) then
+  echo " "
+  echo "Do you want to apply incremental updates: $inc_updates_file"
+  echo "Continue ? (y/n)"
+  set ans = $<
+  if ( $ans == '' ) set ans = 'y'
+  if ( $ans == 'y' ) then
+    echo ".. applying incremental updates:"
+    foreach f ($inc_updates_file)
+      if ( -e $f ) then 
+        if ( $f:e == 'Z' ) then
+          zcat $f | tar -xvf -  
+        else if ( $f:e == 'gz' ) then
+          gunzip -c $f | tar -xvf -
+        else if ( $f:e == 'tar' ) then
+          tar -xvf $f
+        else
+          echo "Unknown file type $f NOT extracted"
+        endif 
+        \rm -f $f 
+      endif
+    end
+  endif
+endif
+
+#Install executables if requested.
+if ( $install_exe == "yes" ) then
+  echo "Installing precompiled gamit and globk executables into ${mypath}/bin"
+  set exe_files = `ls *exe*.Z *exe*.gz *exe*.tar |& grep -v "No match"`
+  if ( $#exe_files > 0 ) then
+    echo "Executable files to be installed are: $exe_files"
+    mkdir bin
+    pushd bin
+    foreach f ($exe_files)
+      if ( -e ../$f ) then 
+        if ( ../$f:e == '../Z' ) then
+          zcat ../$f | tar -xvf -  
+        else if ( ../$f:e == '../gz' ) then
+          gunzip -c ../$f | tar -xvf -
+        else if ( ../$f:e == '../tar' ) then
+          tar -xvf ../$f
+        else
+          echo "Unknown file type $f NOT extracted"
+        endif 
+        \rm -f $f 
+      endif
+    end
+    popd
+  else
+    echo "No executable tar files found in ${mypath} directory. Stopping intallation"
+    exit
+  endif
+  
+else
+# Allow the user to check that the correct gfortran compiler flag options are setup.
+  if ( $compiler != '' ) then
+    echo " "
+    echo "================================"  
+    echo "Using compiler option: $compiler" 
+    echo "================================"
+    echo " "
+    echo "Have you checked that the compiler flag options in the assignment block "
+    echo "of the ./libraries/Makefile.config for your particular hardware/OS type "
+    echo "are correctly set for your compiler? "
+    echo " "
+    echo "If NOT stop now, and make the compiler flag options assignment block for your"
+    echo "particular hardware/OS type in ./libraries/Makefile.config. the same as the"
+    echo "compiler flag options assignment block for Linux. (Only the 4 lines defining"
+    echo "compilers and compiler flags need to be modified)."
+    echo " "    
+    echo "Continue ? (y/n)"
+    set ans = $<
+    if ( $ans == '' ) set ans = 'y'
+    if ( $ans == 'n' ) exit
+  endif
+  
+  echo " "  
+  echo ".. adding $mypath/com to your search path to continue installation"
+  set path = ($mypath/com $path)
+  echo " "
+  echo "To execute GAMIT and GLOBK you will need to set your login path to"
+  echo "include $mypath/com $mypath/gamit/bin $mypath/kf/bin "     
+  echo " "
+  echo "You will also need the alias or link gg --> $mypath"
+  echo " " 
+
+  set system = `uname -a | awk '{print $1, $3}'`  
+  set awktype = `which awk | awk '{print $NF}'`  
+  echo ' '
+  echo 'Your Operating System type is:' $system[1]
+  echo 'Your default awk version is:' $awktype
+  if ( $system[1] == "SunOS" ) then
+    set posixawk = `echo POSIX | awk -v temp=$awktype '{print $1}'`  
+    if ( $posixawk != 'POSIX' ) then 
+      echo 'When using Solaris GAMIT/GLOBK scripts require POSIX standard /usr/xpg4/bin/awk '
+      echo 'On Solaris, the standard awk in /usr/bin is not POSIX-compliant so you must, ' 
+      echo 'force use of  /usr/xpg4/bin/awk.  This can be done by putting a link into '
+      echo '/gamit/bin and making sure that /gamit/bin precedes /usr/bin in your path.'
+      echo 'You must use a link rather than an alias in .cshrc because when you execute ' 
+      echo 'a script with the -f option your .cshrc is not sourced, so the script is run ' 
+      echo 'using a default shell. '
+      exit
+    endif
+  endif 
+         
+  set conf = libraries/Makefile.config
+  set conf_xlibpath = (`grep -v "#" $conf | grep "X11LIBPATH" | cut -d" " -f2`)  
+  set conf_xincpath = (`grep -v "#" $conf | grep "X11INCPATH" | cut -d" " -f2`) 
+  echo " "
+  echo "These are the default paths to X11 found in Makefile.config"
+  echo "X11LIBPATH: $conf_xlibpath"
+  echo "X11INCPATH: $conf_xincpath"
+  echo " "
+  echo "Searching your system for X11 installation"
+  set xincpath = `find /usr -name Xlib.h   -print |& grep -v Permission | awk -F/ '{for (i=2;i<=NF-1;i++) printf "%s","/"$i; printf "\n"}'` >& /dev/null 
+  set xlibpath = `find /usr -name libX11.a -print |& grep -v Permission | awk -F/ '{for (i=2;i<=NF-1;i++) printf "%s","/"$i; printf "\n"}'` >& /dev/null
+  echo "Found these paths to X11 libs and includes on your system"
+  echo "X11LIBPATH:  $xlibpath"
+  echo "X11INCPATH:  $xincpath"
+  echo " "
+  if ( $#xlibpath > 1 || $#xincpath > 1 ) then
+    echo 'Found multiple paths to X11. I dont know which to choose.'
+    echo "You should set X11LIBPATH X11INCPATH in the Makefile.config manually."
+    echo " "
+    set ans = n
+    goto skip
+  endif 
+  echo 'Are these correct for your system?'
+  echo "Continue? (y/n)"
+  set ans = $< 
+  skip:
+  if ( $ans == '' ) set ans = 'y'
+  if ( $ans == 'y') then
+# Set X11LIBPATH
+    set n = `grep -n "X11LIBPATH" $conf | grep -v "#" | awk -F: '{print $1}'`
+    @ n = $n - 1
+    head -n +$n $conf >! ${conf}.new
+    echo "X11LIBPATH $xlibpath" >> ${conf}.new 
+    @ n = $n + 2
+    tail -n +$n $conf >> ${conf}.new
+    \mv ${conf}.new ${conf}      
+
+# Set X11INCPATH
+    set n = `grep -n "X11INCPATH" $conf | grep -v "#" | awk -F: '{print $1}'`
+    @ n = $n - 1
+    head -n +$n $conf >! ${conf}.new
+    echo "X11INCPATH $xincpath" >> ${conf}.new 
+    @ n = $n + 2
+    tail -n +$n $conf >> ${conf}.new
+    \mv ${conf}.new ${conf}
+ 
+  else if ( $ans == 'n' ) then
+    echo 'Are the defaults found in Makefile.config correct?'
+    echo 'If NOT edit the Makefile.config now before choosing to contine' 
+    echo "Continue? (y/n)"
+    set ans = $<
+    if ( $ans == '' ) set ans = 'y'
+    if ( $ans == 'n' ) then
+      echo "You need to go and edit the Makefile.config by hand"
+      exit
+    endif
+  endif
+  
+  echo " "        
+  set maxsit = `grep "MAXSIT" $conf`; shift maxsit
+  set maxsat = `grep "MAXSAT" $conf`; shift maxsat
+  set maxatm = `grep "MAXATM" $conf`; shift maxatm
+  set maxepc = `grep "MAXEPC" $conf`; shift maxepc  
+  echo "GAMIT dimensions in /libraries/Makefile.config are set to "  
+  echo "  maxsit = " $maxsit
+  echo "  maxepc = " $maxepc
+  echo "  maxatm = " $maxatm
+  echo "  maxsat = " $maxsat
+  echo " "
+  echo 'Are these defaults found in Makefile.config correct?'
+  echo 'If NOT edit the Makefile.config now before choosing to contine' 
+  echo "Continue ? (y/n)"
+  set ans = $<
+  if ( $ans == '' ) set ans = 'y'
+  if ( $ans == 'n' ) exit
+ 
+  echo " "
+  echo "  .. removing any existing Makefiles or archive files from libraries directories"
+  rmfresh -p $mypath -d libraries -M -ao   
+    
+  echo " "
+  echo "  .. removing any existing Makefiles or archive files from gamit directories"
+  rmfresh -p $mypath -d gamit -M  -ao
+  echo " "
+  echo "  .. making libraries and gamit"
+  make_gamit $mypath $compiler 
+  if( $status != 0 ) then
+    echo "Failure in make_gamit -- install_software terminated" 
+    exit  
+  endif
+          
+  echo " "
+  echo "  .. removing any existing Makefiles or archive files from kf directories"
+  rmfresh -p $mypath -d  kf -M -ao
+  echo " "
+  echo "  .. making globk modules in kf directories"
+  make_globk $mypath  $compiler
+  if( $status != 0 ) then
+    echo "Failure in make_globk -- install_software terminated"   
+    exit
+  endif
+endif
+#Finish up by guiding the user through required environment settings required.
+echo "Create the gg link in your home directory to the version of "
+echo "gamit/globk you just installed ? (y/n)"
+echo " "    
+set ans = $<
+if ( $ans == '' ) set ans = 'y'
+if ( $ans == 'y' ) then
+  echo 'Making required ~/gg link to newly installed software'
+  echo "ln -s -f ${mypath} ~/gg"
+  \rm -rf ~/gg
+  ln -s -f ${mypath} ~/gg
+  echo " "
+endif
+if ( $install_exe == "yes" ) then
+  echo "Don't forget to set your : path to include $mypath/bin" 
+else
+  echo "Don't forget to set your : path to include $mypath/gamit/bin and $mypath/kf/bin " 
+endif
+echo "                         : HELP_DIR environment variable in you shell profile" 
+echo "                           (in .cshrc/.tcshrc add: setenv HELP_DIR ${mypath}/help/)"
+echo "                         : INSTITUTE evnironment variable in your shell profile" 
+echo "                           (in your .cshrc/.tcshrc add: setenv INSTITUTE where_i_work)"
+echo "                           where_i_work is a 3 character identifier for your solutions"
+
+exit

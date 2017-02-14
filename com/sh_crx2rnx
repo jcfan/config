@@ -1,0 +1,145 @@
+#!/bin/csh -f
+#
+#         C-shell script : sh_crx2rnx
+#             (frontend of CRX2RNX)
+# 1996.12.19  created by HATANAKA, Y.  e-mail: hata@gsi-mc.go.jp
+# 2001.7.5 modified by McClusky S. email: simon@wegener.mit.edu
+#
+#--------------------------------------------------------------------
+if($#argv < 1) then
+more << EOF
+
+sh_crx2rnx is a C-shell script to recover RINEX files from Compact RINEX files.
+
+             Convert GSI compact RINEX into standard RINEX  
+
+Usuage: sh_crx2rnx -c <y/n> -d <y/n> -f <files>
+
+where: -c = y indicates that both the old and new 
+            files are to be compressed (default no)
+
+       -d = y indicates that the original files are to be deleted (default yes)
+
+       -f = files to be uncompacted. Wildcard can be used.
+            Recovered RINEX files are created into current directory.
+
+example sh_crx2rnx -c n -d y -f ????325?.99d.Z ????325?.99d
+
+  Compressed RINEX/CRINEX --> CRINEX       -->      RINEX
+       ????????.??m.Z                      -->   ????????.??m
+       ????????.??n.Z                      -->   ????????.??n
+       ????????.??o.Z                      -->   ????????.??o
+       ????????.??d.Z     --> ????????.??d -->   ????????.??o
+                              ????????.??d -->   ????????.??o
+EOF
+
+exit
+endif
+#--------------------------------------------------------------------
+
+set PROGRAM = crx2rnx
+set compress = "n" 
+set delete = "y" 
+while ( $#argv > 0 )
+   set input = ($argv)
+   switch($input[1])
+     case -c:
+       set compress = $input[2]   
+     breaksw
+     case -d:
+       set delete = $input[2]  
+     breaksw
+     case -f:
+       set files =  (`echo $argv | cut -d- -f2`); shift files
+     breaksw 
+   endsw         
+   if ( $#argv > 0 ) shift argv
+ end 
+
+foreach file (`echo $files`)
+
+    set file2 = $file:t
+    if( $file2:e == 'Z')  set file2 = $file2:r 
+    if( $file2:e == 'gz') set file2 = $file2:r 
+    if( $file2:e == 'bz2') set file2 = $file2:r 
+
+    set body = $file2:r
+    set extension = $file2:e
+    set yy = `echo $extension | cut -c1-2`
+
+    if($file =~ *.??m.Z) then
+        gunzip -f $file
+
+    else if($file =~ *.??n.Z) then
+        gunzip -f $file
+
+    else if($file =~ *.??o.Z) then
+        gunzip -f $file
+
+    else if($file =~ *.??d.Z) then
+        zcat $file | $PROGRAM - > $body.$yy'o'
+        if( $status == 1 ) then
+           \rm $body.$yy'o'
+           echo 'Error uncompressing Hatanaka compact rinex file: '$file
+           continue
+        else
+           if ( $delete == "y" ) then
+             \rm $file >& /dev/null
+           endif
+           if ( $compress == "y" ) then
+             gzip -f $body.$yy'o' >& /dev/null
+             gzip -f $file >& /dev/null
+           endif
+        endif
+	
+    else if($file =~ *.??d.gz) then
+        zcat $file | $PROGRAM - > $body.$yy'o'
+        if( $status == 1 ) then
+           \rm $body.$yy'o'
+           echo 'Error uncompressing Hatanaka compact rinex file: '$file
+           continue
+        else
+           if ( $delete == "y" ) then
+             \rm $file >& /dev/null
+           endif
+           if ( $compress == "y" ) then
+             gzip -f $body.$yy'o' >& /dev/null
+             gzip -f $file >& /dev/null
+           endif
+        endif
+
+    else if($file =~ *.??d.bz2) then
+        bzcat $file | $PROGRAM - > $body.$yy'o'
+        if( $status == 1 ) then
+           \rm $body.$yy'o'
+           echo 'Error uncompressing Hatanaka compact rinex file: '$file
+           continue
+        else
+           if ( $delete == "y" ) then
+             \rm $file >& /dev/null
+           endif
+           if ( $compress == "y" ) then
+             gzip -f $body.$yy'o' >& /dev/null
+             gzip -f $file >& /dev/null
+           endif
+        endif
+
+    else if($file =~ *.??d) then
+        cat  $file | $PROGRAM - > $body.$yy'o'
+        if( $status == 1 ) then
+           \rm $body.$yy'o'
+           echo 'Error uncompressing Hatanaka compact rinex file: '$file
+           continue
+        else
+           if ( $delete == "y" ) then
+             \rm $file >& /dev/null
+           endif
+           if ( $compress == "y" ) then
+             gzip -f $body.$yy'o' >& /dev/null
+             gzip -f $file >& /dev/null
+           endif
+        endif
+
+    else
+    endif
+end

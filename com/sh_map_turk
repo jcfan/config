@@ -1,0 +1,400 @@
+#! /bin/csh
+#
+#doc Create a GMT map of Turkey (used by sh_plotvel)
+#doc
+#
+echo " " 
+echo "Arguments for sh_map_turk:" $argv 
+#
+# This shell script for creating a GMT map of Turkey, designed to serve as
+# a template for other regions, is based on sh_map_turkey written by M.Burc Oral 
+# and stored in /contributions/oral/com_globk.  The modest list of arguments 
+# interface easily with sh_plotvel, which can use this or a similar script to
+# create the maps onto which station veloc/bound/ities are plotted.  Enhancements to
+# the maps can be accomplished to some extent with direct input to sh_plotvel
+# (i.e., without calling this script) or by customizing this script.
+#  R. King and S. McClusky   November 1995.   Last modified by S. McClusky 970712
+# 
+if ( $#argv == 0   ) then
+echo "  "
+ echo " Called sh_map_turk to create a GMT map."
+echo " "
+echo " Usage: "
+echo "  "
+echo "      sh_map_turk -ps <file> -o <options> -page <option> -color <option> "   
+echo " "           
+echo "      Required: "
+echo " "       
+echo "        -ps  file     : Name of output postscript file"   
+echo " "
+echo "      Required if called from another script that will continue mapping (e.g. sh_plotvel):"
+echo " "
+echo "         -c     "
+echo " " 
+echo "      Optional:   "
+echo " "
+echo "        -o  options   : GMT projection options < size range borders > "
+echo " " 
+echo "        -page  option : Page orientation   P for portrait (default),  L for landscape "          
+echo " "
+echo "        -color option : yes or no (default)    "
+echo " "
+echo "   Example:  sh_map_turk -ps turkmap.ps  -o -R22/44/30/42 -Jm0.3 -Bf1.0/f1.0WSen -color yes "
+echo " " 
+echo "   Requirement:   The location of the maps on your system must be set as 'root_map'."
+echo "                  The default is '~/gg/maps' where 'gg' is an alias in your home    "
+echo "                  directory pointing to the level above 'gamit' and 'kf'."
+echo " "
+exit
+endif
+
+##################### Set up the defaults ##################################################### 
+       
+set root_map = ~/gg/maps 
+
+# Input variables   
+set OPTION = ""
+set PAGE = -P
+set color = no 
+set called = no 
+
+# Change any of the options below to "yes" to enable plotting of these features
+set topo       = yes
+set psscale    = yes
+set labels     = no
+set labels2    = no
+set labels3    = no
+set labels4    = no
+set nuvel1     = yes
+set boundary   = yes
+set graben     = no 
+set erzincan   = no 
+set pattern    = no
+set ocean_blue = no
+set regions    = no
+set tectonics  = no
+set tectonics1 = no    
+set tectonics2 = no
+set tectonics3 = no
+set blocks     = no
+# set mono to " " for color images 
+set mono = -M
+set mono = ''
+# set the minimum area of features like lakes or islands to be plotted
+set min_area   = 100
+set coast_res  = h
+set illu_file  =  "none"
+#set palette    =  $root_map/color4_x1000.cpt
+#set palette    =  $root_map/color4.cpt
+#set palette    =  $root_map/color8.cpt
+#set palette    =  $root_map/color8_m.cpt
+#set palette    =  $root_map/wiki-1.03_m.cpt
+#set palette    =  $root_map/GMT_globe.cpt
+set palette    =  $root_map/textbook.cpt
+#set palette    =  $root_map/tien_color_km.cpt
+#set palette    =  $root_map/miller.cpt
+#set topo_file  =  $root_map/etopo5.grd
+#set palette    =  $root_map/simon_inc.cpt
+#set palette    =  $root_map/tien_color.cpt
+#set topo_file  =  $root_map/E020N60.grd
+#set illu_file  =  $root_map/E020N60i.grd
+set illu_file  =  $root_map/topo62i.grd
+set topo_file  =  $root_map/topo62.grd
+#set topo_file  = /raid2/simon/srtm3/sinai_srtm.grd
+#set illu_file  = /raid2/simon/srtm3/sinai_srtmi.grd
+#set illu_file  =  $root_map/srtmplus_30_120i.grd
+#set topo_file  =  $root_map/srtmplus_30_120.grd
+#set illu_file  =  $root_map/srtmplus_w20s50-e100n90_i.grd
+#set topo_file  =  $root_map/srtmplus_w20s50-e100n90.grd
+#set illu_file  =  /net/chandler/raid2/vernant/MNT/Gmt_grd_data/Bathy-30s/med_bath_int.grd
+#set topo_file  =  /net/chandler/raid2/vernant/MNT/Gmt_grd_data/Bathy-30s/med_bath.grd
+#set illu_file  =  $root_map/w001001i.grd
+#set topo_file  =  $root_map/w001001r.grd
+set illu_file  =  /net/everest/raid6/ftp/pub/topo/w20n90-e100s60_i.grd
+set topo_file  =  /net/everest/raid6/ftp/pub/topo/w20n90-e100s60.grd
+
+# Internal controls 
+set border       = "-Bf1a2/f1a2WSen "
+set projection   = "-Jm.233"
+#set projection="Oc000:00/00:00/032:36/30:42/9.0"
+set range        = "-R18/48/30/44 " 
+set raster       = -0
+set raster       = ""
+set c = "/0/0/0" 
+set text_color = "-G0/0/0"
+set text_box = "-W255/255/255 -C0.005/0.005"  
+#set text_box = ""  
+if ( $topo == yes ) then  
+  set yshift       = 1.5
+  set xshift       = 1.0
+#  set yshift       = 0.5
+#  set xshift       = 0.0
+else 
+  set yshift       = 2.5
+  set yshift       = 1.5
+endif    
+set V            = " "
+#
+set V            = -V
+
+##################### Decipher the command line ##############################################
+
+while ($#argv > 0 ) 
+set input = ( $argv ) 
+switch($input[1])
+	case -ps:
+		set psfile      =  $input[2]
+		breaksw  
+	case -R*: 
+ 		set  range      =  $input[1]
+		breaksw 
+	case -J*: 
+ 		set  projection =  $input[1]
+		breaksw
+	case -B*: 
+ 		set border      =  $input[1]
+		breaksw
+	case -page:
+		set PAGE    =  -$input[2]  
+       if ( $input[2] == "L" ) set PAGE = " "
+		breaksw 
+   case -c
+       set called      = yes
+       breaksw
+	case -color:
+		if (  $input[2] == yes ) then 
+	    	set c = "/0/0/0" 
+	    	set text_color = "-G0/0/0"
+		endif 
+		breaksw	
+endsw 
+shift argv 
+end
+
+# set GMT defaults      
+if ( $called != yes ) then
+  gmtdefaults -D >! .gmtdefaults
+  echo "LABEL_FONT_SIZE  = 10"    >> .gmtdefaults
+  echo "ANOT_FONT_SIZE   = 10"    >> .gmtdefaults
+  echo "HEADER_FONT_SIZE = 10"    >> .gmtdefaults
+  echo "WANT_EURO_FONT   = FALSE" >> .gmtdefaults
+  echo "FRAME_WIDTH = 0.03" >> .gmtdefaults
+  echo "DEGREE_FORMAT    = 0    " >> .gmtdefaults
+#  echo "DEGREE_FORMAT    = 3    " >> .gmtdefaults    
+endif
+
+# If the projection options are not input, set them now from the script defaults
+
+if ( $#OPTION != 3 )  set OPTION  =  ( $range $projection $border ) 
+echo " "
+echo "SH_MAP_TURKEY - range, projection, borders : "  $OPTION  
+echo " "
+
+# Set options for enhanced maps
+set OPTION2   = (   $PAGE " -H0  -K -O -M " ) 
+ 
+##################### Create the map ##############################################
+
+# Coastlines or topography from GMT
+if ( $topo != yes ) then 
+  echo "Plotting coastlines"
+  if ( $boundary != yes ) then 
+    if ( $pattern != yes ) then
+      if ( $ocean_blue != yes ) then
+        pscoast  $OPTION  -W1   $PAGE -K  -D$coast_res  -A$min_area  -Y$yshift                   >! $psfile
+      else 
+        pscoast  $OPTION  -W1   $PAGE -K  -S180/240/255  -D$coast_res   -A$min_area  -Y$yshift   >! $psfile 
+      endif
+    else  
+      if ( $ocean_blue != yes ) then
+        pscoast  $OPTION  -W1   $PAGE -K  -Gp0.25/31    -D$coast_res  -A$min_area  -Y$yshift     >! $psfile
+      else  
+        pscoast  $OPTION  -W1   $PAGE -K  -Gp0.25/31  -S180/240/255  -D$coast_res  -A$min_area  -Y$yshift >! $psfile
+      endif
+    endif
+  else
+    if ( $pattern != yes ) then
+      if ( $ocean_blue != yes ) then
+        pscoast  $OPTION  -W1   $PAGE -K  -N1/1ta -D$coast_res  -A$min_area  -Y$yshift                 >! $psfile
+      else 
+        pscoast  $OPTION  -W1   $PAGE -K  -N1/1ta -S180/240/255  -D$coast_res  -A$min_area -Y$yshift   >! $psfile
+      endif 
+    else                                                
+      if ( $ocean_blue != yes ) then
+        pscoast  $OPTION  -W1   $PAGE -K  -N1/1ta -Gp0.25/31 -D$coast_res  -A$min_area  -Y$yshift      >! $psfile 
+      else
+        pscoast  $OPTION  -W1   $PAGE -K  -N1/1ta -Gp0.25/31 -S180/240/255 -D$coast_res -A$min_area  -Y$yshift >! $psfile
+      endif 
+    endif     
+  endif
+else 
+  echo " "                    
+  echo "Plotting topography: "$topo_file
+  if ( $psscale == yes ) then
+#    set paletteXY  = (  -D5.0/0.0/7.5/0.125h -L -B:.ELEVATION:  ) 
+    set paletteXY  = (  -D3.5/0.0/7.0/0.125h -L -B:.ELEVATION:  ) 
+    psscale   -C$palette  $paletteXY          $V  $PAGE  -K    $raster >! $psfile
+    if ( $illu_file == "none" ) then
+      grdimage  -C$palette  $topo_file                $OPTION  $V  $PAGE  -K  -O  -Y$yshift   $raster -V $mono  >> $psfile   
+    else
+      grdimage  -C$palette  $topo_file  -I$illu_file  $OPTION  $V  $PAGE  -K  -O  -Y$yshift   $raster -V  $mono >> $psfile   
+    endif
+  else
+    if ( $illu_file == "none" ) then
+      grdimage  -C$palette  $topo_file               $OPTION  $V  $PAGE  -K     -Y$yshift -X$xshift  $raster -V $mono >! $psfile
+    else   
+      grdimage  -C$palette  $topo_file -I$illu_file  $OPTION  $V  $PAGE  -K     -Y$yshift -X$xshift  $raster -V $mono >! $psfile
+#      grdimage  -C$palette  $topo_file -I$illu_file  $OPTION  $V  $PAGE  -K     -Y$yshift -X$xshift  $raster -V $mono >! $psfile
+#      grdview $topo_file -C$palette -I$illu_file $OPTION  $V  $PAGE  -K  -Qs -E180/90  -Y$yshift -X$xshift  $raster -V $mono >! $psfile
+    endif
+  endif
+  echo "Plotting coastlines"
+  if ( $boundary != yes ) then
+      if ( $ocean_blue != yes ) then
+        pscoast                        -W3  $OPTION  $V  -P  -K  -O  -D$coast_res -A$min_area     >> $psfile 
+      else  
+        pscoast                        -W3  $OPTION  $V  -P  -K  -O -S180/240/255 -D$coast_res -A$min_area     >> $psfile
+      endif 
+   else
+      if ( $ocean_blue != yes ) then
+        pscoast                        -W3  $OPTION  $V  -P  -K  -O  -N1/2ta  -D$coast_res -A$min_area >> $psfile
+      else   
+# Dark_Blue        pscoast                        -W3  $OPTION  $V  -P  -K  -O  -N1/1ta -S30/144/255  -D$coast_res -A$min_area >> $psfile 
+# Light_Blue       pscoast                        -W3  $OPTION  $V  -P  -K  -O  -N1/1ta -S230/240/255 -D$coast_res -A$min_area >> $psfile 
+        pscoast                        -W3  $OPTION  $V  -P  -K  -O  -N1/1ta -S180/240/255 -D$coast_res -A$min_area >> $psfile 
+      endif
+  endif
+endif 
+# Optional enhancements - edit for your own purposes
+if ( $tectonics == yes ) then
+  echo " "
+  echo "Plotting tectonic features" 
+#GMT2 psxy  $root_map/turk_tectonic_lakes            $OPTION $OPTION2 -W1                          >> $psfile
+  psxy  $root_map/turk_tectonic_fault1           $OPTION $OPTION2 -W3$c                        >> $psfile
+  psxy  $root_map/turk_tectonic_fault2           $OPTION $OPTION2 -W1$c                        >> $psfile
+  psxy  $root_map/turk_tectonic_fault3           $OPTION $OPTION2 -W1$c                        >> $psfile
+  psxy  $root_map/turk_tectonic_fault_dashed     $OPTION $OPTION2 -W1$c\t30:0                  >> $psfile
+  psxy  $root_map/turk_tectonic_thrust_L         $OPTION $OPTION2 -W3$c         -Sf0.50/.07L   >> $psfile
+  psxy  $root_map/turk_tectonic_thrust_R         $OPTION $OPTION2 -W3$c         -Sf.50/.07R   >> $psfile
+  psxy  $root_map/turk_tectonic_thrust_R_dashed  $OPTION $OPTION2 -W1$c\t30:0   -Sf.25/.05R   >> $psfile
+  psxy  $root_map/turk_tectonic_thrust_L_dashed  $OPTION $OPTION2 -W1$c\t30:0   -Sf.25/.05L   >> $psfile
+  psxy  $root_map/turk_tectonic_graben_r         $OPTION $OPTION2 -W1$c         -Sf.10/.02r   >> $psfile
+  psxy  $root_map/turk_tectonic_graben_l         $OPTION $OPTION2 -W1$c         -Sf.10/.02l  >> $psfile
+  psxy  $root_map/izmit.rupture.model            $OPTION $OPTION2 -W8/0/255/0                >> $psfile
+endif
+ 
+if ( $tectonics1 == yes ) then
+  echo " "
+  echo "Plotting tectonic features" 
+#  psxy  /data5/rwk/topo_maps/me_faults.car           $OPTION $OPTION2 -W3$c                        >> $psfile
+#  psxy  /data5/rwk/topo_maps/na_faults.car           $OPTION $OPTION2 -W2$c                        >> $psfile
+  psxy  /data5/rwk/topo_maps/platebound.car           $OPTION $OPTION2 -W2$c                        >> $psfile
+endif
+if ( $tectonics2 == yes ) then
+  echo " "
+  echo "Plotting tectonic features" 
+  psxy  /data14/ftp/pub/gps/simon/temp/cauc_tectonic_faults2           $OPTION $OPTION2 -W1$c        >> $psfile
+#  pstext /data14/ftp/pub/gps/simon/temp/cauc_faults.num $OPTION  -O  -K  $PAGE  $text_color         >> $psfile  
+  psxy  /data14/ftp/pub/gps/simon/temp/cauc_tectonic_thrustL  $OPTION $OPTION2 -W1$c  -Sf0.25/.06L   >> $psfile
+  psxy  /data14/ftp/pub/gps/simon/temp/cauc_tectonic_thrustR  $OPTION $OPTION2 -W1$c  -Sf0.25/.06R   >> $psfile
+endif 
+if ( $tectonics3 == yes ) then
+  echo " "
+  echo "Plotting tectonic features" 
+  psxy  /data47/simon/izmit/maps/fayturk.map      $OPTION $OPTION2 -W1$c                     >> $psfile
+  psxy  /data47/simon/izmit/maps/lapichonfay.map  $OPTION $OPTION2 -W1$c                     >> $psfile
+  psxy  /data47/simon/izmit/maps/rupture.dat      $OPTION $OPTION2 -W8/255/0/0               >> $psfile
+endif 
+
+if ( $blocks == yes ) then
+#  psxy  $root_map/emed_block_bounds.dash           $OPTION $OPTION2 -W8/200/200/0\t30:0 -: -V              >> $psfile
+#  psxy  $root_map/emed_block_bounds.solid          $OPTION $OPTION2 -W8/200/200/0       -: -V              >> $psfile
+  psxy  $root_map/emed_blocks                       $OPTION $OPTION2 -W8/0/0/200  -V                        >> $psfile
+endif
+
+#Grabens
+if ( $graben == yes ) then 
+  echo " "
+  echo "Plotting grabens"
+  psxy $root_map/turk_tectonic_graben_R         $OPTION $OPTION2  -W1$c  -Sf.1/.01r               >>  $psfile        
+  psxy $root_map/turk_tectonic_graben_L         $OPTION $OPTION2  -W1$c  -Sf.1/.01l               >>  $psfile        
+endif
+
+#ERZINCAN Basin 
+if ( $erzincan == yes ) then
+  echo " "
+  echo "Plotting erzincan basin" 
+  psxy  $root_map/turk_tectonic_basin  -H0 $OPTION  -M -O -K $PAGE  -Gp.5/31  >> $psfile 
+endif  
+
+#Nuvel1 ( needs to be adjusted.)
+if ( $nuvel1 == yes ) then
+  echo " "
+  echo "Plotting NUVEL1 plate boundaries"
+  psxy    $root_map/nuvel1_plates_mod   $OPTION $OPTION2  -W9/255/255/255 -V  >> $psfile
+  psxy    $root_map/nuvel1_plates_mod   $OPTION $OPTION2  -W5/0/0/255 -V  >> $psfile
+#  psxy    /chandler/raid2/simon/gps_analysis/gsoln/tethys_names   $OPTION $OPTION2  -W15/255/0/0 -V  >> $psfile
+endif
+
+if ( $labels == yes ) then         
+  echo " "                    
+  echo "Plotting labels: "$root_map/turk_labels
+  set r = `echo $range | cut -c3- | awk -F/ '{print $1, $2, $3, $4}'`   
+  awk '$1 > lonmin/1 && $1 < lonmax/1 && $2 > latmin/1 && $2 < latmax/1 {print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11}' lonmin=$r[1] lonmax=$r[2] latmin=$r[3] latmax=$r[4] $root_map/turk_labels >! tmp.labels
+  pstext tmp.labels $OPTION  -O  -K  $PAGE  $text_color    >> $psfile  
+endif   
+
+if ( $labels2 == yes ) then
+  echo " "                    
+  echo "Plotting labels2: "$root_map/turk_labels2 
+  echo $range
+  set r = `echo $range | cut -c3- | awk -F/ '{print $1, $2, $3, $4}'`
+  echo $r   
+  awk '$1 > lonmin/1 && $1 < lonmax/1 && $2 > latmin/1 && $2 < latmax/1 {print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11}' lonmin=$r[1] lonmax=$r[2] latmin=$r[3] latmax=$r[4] $root_map/turk_labels2 >! tmp.labels
+  cat tmp.labels
+  pstext tmp.labels $OPTION  -O  -K  $PAGE  $text_color $text_box   >> $psfile  
+endif   
+
+if ( $labels3 == yes ) then
+  echo " "                    
+  echo "Plotting labels3: "$root_map/turk_labels3
+  set r = `echo $range | cut -c3- | awk -F"/" '{print $1, $2, $3, $4}'`   
+  awk '$1 > lonmin/1 && $1 < lonmax/1 && $2 > latmin/1 && $2 < latmax/1 {print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11}' lonmin=$r[1] lonmax=$r[2] latmin=$r[3] latmax=$r[4] $root_map/turk_labels3 >! tmp.labels
+  pstext tmp.labels $OPTION  -O  -K  $PAGE  $text_color $text_box  >> $psfile  
+endif
+
+if ( $labels4 == yes ) then
+  echo " "                    
+#  echo "Plotting labels4: "$root_map/marm_labels
+  echo "Plotting labels4: "$root_map/turk_blocks.labels
+  set r = `echo $range | cut -c3- | awk -F/ '{print $1, $2, $3, $4}'`   
+#  awk '$1 > lonmin/1 && $1 < lonmax/1 && $2 > latmin/1 && $2 < latmax/1 {print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11}' lonmin=$r[1] lonmax=$r[2] latmin=$r[3] latmax=$r[4] $root_map/marm_labels >! tmp.labels
+  awk '$1 > lonmin/1 && $1 < lonmax/1 && $2 > latmin/1 && $2 < latmax/1 {print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11}' lonmin=$r[1] lonmax=$r[2] latmin=$r[3] latmax=$r[4] $root_map/turk_blocks.labels >! tmp.labels
+  pstext tmp.labels $OPTION  -O  -K  $PAGE  $text_color    >> $psfile  
+endif
+   
+if ( $regions == yes ) then
+  echo " "                    
+  echo "Plotting regions: "$root_map/regions
+  psxy    $root_map/regions   $OPTION $OPTION2  -W5/0/0/0 -L  -:  >> $psfile
+endif   
+              
+# Terminate the plot if not called by another script 
+if ( $called == no ) then
+  echo "Created  postscript file    :" $psfile
+  echo "  "
+  echo "To view  postript file      : gs" $psfile  
+  echo "  "
+  echo "Hardcopy   postript file    :  lpr "$psfile  
+  # mark the end of ps file
+  pstext <<ENDD      $OPTION  -O   $PAGE -N   -U   >> $psfile  
+ENDD
+
+# Otherwise print a message and return to the calling script
+else
+  echo " "
+  echo "sh_map_turk produced plot: " $psfile
+  echo " "    
+endif
+
+exit

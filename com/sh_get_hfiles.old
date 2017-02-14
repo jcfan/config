@@ -1,0 +1,272 @@
+#!/bin/csh  
+#
+#doc Get h-files by day number from the SOPAC archive
+#doc
+#
+# Last modified 99/04/16 by Simon McClusky
+######################## INSTRUCTIONS #############################
+# See if arguments passed
+if( $#argv == 0 ) then
+  echo "===================================================================================="
+  echo " Script to get hfiles by day number from the scripps archive " 
+  echo "  "
+  echo " Usage: sh_get_hfiles -yr <yr> -doy <doy> -ndays <num> -net <networks> -soln -ftp_prog <ftp/ncftp>"
+  echo "  "
+  echo "        <yr> 4 char year of hfile requested  [Required] "
+  echo "        <doy> 3 char day of year of hfile requested [Required] " 
+  echo "        <num> Number of consecutive days of hfiles to retreive [Default 1] "
+  echo "        <networks> List of networks to be retreived from the ftp archive [Default ALL] "
+  echo "        Network choices: igs1 igs2 bard cors noam dgga eura pgga net1 net2 net3 net4 "      
+  echo "        -soln Check the solution archives rather than the h-file archives"      
+  echo "        <ftp/ncftp> choose the ftp program to be used [default is ftp]"
+  echo "  "      
+  echo " Examples: sh_get_hfiles -yr 1999 -doy 246 "
+  echo "           sh_get_hfiles -yr 1999 -doy 246 -ndays 1 -net igs1 igs2 eura "
+  echo "  "
+  echo "===================================================================================="
+  exit
+endif 
+##################### SET UP DEFAULTS #############################   
+#
+set year = ''
+set yr = ''
+set doy = ''
+set gpsw = ''
+set site = ''
+set numd = 1
+set archive = sopac
+set netlist = ''
+set soln_dir = ''
+set mailto = `whoami`
+set machine = `hostname`
+set ftp_prog = 'ftp -inv'
+
+##################### DECIPHER COMMAND LINE #######################   
+while ($#argv > 0 )
+  set input = ( $argv )
+  switch($input[1])
+    case -nd*:
+      set numd = $input[2] 
+    breaksw 
+    case -y*:
+      set year = $input[2]
+# Variable yr[1] = 4 char yr, yr[2] = 2 char yr, yr[3] = 1 char yr
+      set yr = `sh_year -year $year`
+    breaksw 
+    case -d*:
+      set doy = $input[2]  
+    breaksw 
+    case -ne*:
+       set netlist = (`echo $argv | cut -d- -f2`); shift netlist 
+    breaksw
+    case -s*:
+      set soln_dir = "YES"  
+    breaksw 
+    case -f*:
+      set ftp_prog = $input[2]  
+    breaksw 
+  endsw
+  if ( $#argv > 0 ) shift argv
+end
+alldone:
+##################### READ THE FTP_INFO TEMPLATE ############################    
+# 
+echo "ftp_info = sh_get_ftp_info -archive sopac -type hfiles"
+set ftp_info = `sh_get_ftp_info -archive sopac -type hfiles`
+if( $status != 0 ) then
+  echo "Failure in sh_get_ftp_info. -- sh_get_hfiles terminated"   
+  exit 1
+endif
+
+while ($#ftp_info > 0 )
+  set input = ( $ftp_info )
+  switch($input[1])
+    case -ftpsite:
+      set ftpsite  = $input[2]  
+    breaksw 
+    case -ftplogin:
+      set ftplogin  = (`echo $ftp_info | cut -d- -f2`); shift ftplogin 
+    breaksw 
+    case -ftpdir:
+      set ftpdir  = $input[2]  
+    breaksw 
+    case -ftpcmd:
+      set ftpcmd  = (`echo $ftp_info | cut -d% -f2`); shift ftpcmd  
+    breaksw 
+  endsw
+  if ( $#ftp_info > 0 ) shift ftp_info
+end
+
+echo "Information extracted from ftp_info"
+echo "########################################"
+echo "ftpsite $ftpsite"
+echo "ftplogin $ftplogin"
+echo "ftpdir $ftpdir"
+echo "ftpcmd $ftpcmd"
+echo "########################################"
+
+if ( $soln_dir == "YES" ) then  
+  set ftp_info = `sh_get_ftp_info -archive sopac -type hfilesg`
+  while ($#ftp_info > 0 )
+    set input = ( $ftp_info )
+    switch($input[1])
+      case -ftpdir:
+        set ftpdirg  = $input[2]  
+      breaksw 
+    endsw
+    if ( $#ftp_info > 0 ) shift ftp_info
+  end
+  set ftp_info = `sh_get_ftp_info -archive sopac -type hfilesr`
+  while ($#ftp_info > 0 )
+    set input = ( $ftp_info )
+    switch($input[1])
+      case -ftpdir:
+        set ftpdirr  = $input[2]  
+      breaksw 
+    endsw
+    if ( $#ftp_info > 0 ) shift ftp_info
+  end 
+  echo "Solution directories extracted from ftp_info"
+  echo "ftpdirg $ftpdirg"
+  echo "ftpdirr $ftpdirr"
+endif
+
+##################### GET THE JOB DONE ############################
+# Set timestamp hostname variable
+set ts = "`hostname`:`date +"%H%M%S"`"
+
+# Check all required info given.
+if ( ${year} == '' ||  ${doy} == '' ) then
+  echo "sh_get_hfiles: Not all required fields given -- yr: $year doy: $doy --Stop"
+  exit
+endif
+
+# Check if ncftp is requested
+if ( `echo $ftp_prog | awk '{print $1}'` == 'ncftp' ) then
+  if (`echo $ftpcmd | awk '{print $1}'` == 'ftp') then
+    set ftpcmd = `echo $ftp_prog $ftpsite` 
+    echo "-ftp_prog = ncftp requested, ftpcmd now: $ftpcmd" 
+  endif
+endif
+
+# Check netlist. If blank get all available h-files.
+if ( $netlist[1] == '' ) then 
+  set netlist = "ALL"
+endif 
+
+# Setup logfile name
+set log = `date "+get_hfiles_${archive}_%y%m%d:%H%M.log"` 
+touch $log
+
+# Setup session start and stop times
+set jds   = `doy $yr[1] $doy | tail -n -3 | head -n 1 | awk '{print $8}'`
+set mjds  = `doy $jds | tail -n -3 | head -n 1 | awk '{printf "%6d \n", $10}'`
+set jde   = `echo $jds $numd | awk '{print $1+$2}'`
+set mjde  = `doy $jde | tail -n -3 | head -n 1 | awk '{printf "%6d \n", $10}'`
+set years  = `doy $mjds | tail -n -3 | head -n 1 | awk '{printf "%04d \n", $2}'`
+set days   = `doy $mjds | tail -n -3 | head -n 1 | awk '{printf "%03d \n", $6}'`
+set yeare  = `doy $mjde | tail -n -3 | head -n 1 | awk '{printf "%04d \n", $2}'`
+set daye  = `doy $mjde | tail -n -3 | head -n 1 | awk '{printf "%03d \n", $6}'`
+
+# Set up the iteration
+@ count = $numd
+@ mjdc = ${mjds} - 1
+
+while ( $count )
+   @ mjdc = ${mjdc} + 1
+   set sday   = `doy $mjdc | tail -n -3 | head -n 1 | awk '{printf "%03d \n", $6}'`
+   set year   = `doy $mjdc | tail -n -3 | head -n 1 | awk '{printf "%04d \n", $2}'`
+   set yr = `sh_year -year $year`
+   @ count = $count - 1   
+
+# Set up the ftp login info
+   if (`echo $ftpcmd | awk '{print $1}'` == 'ftp') then 
+     echo "user $ftplogin" >! tmp.get.$ts  
+     echo "binary" >> tmp.get.$ts
+     set getcmd = 'get'
+   else
+     echo "binary" >! tmp.get.$ts
+     set getcmd = 'get -f'
+   endif
+
+# See if the files already exist
+   echo List >! tmp.1.$ts
+
+# Get sites included in the list (netlist) to be retrieved
+   foreach net ( `echo $netlist` )
+     if ( $net == "ALL" ) then 
+       echo "mget h????a.${yr[2]}${sday}.Z" >> tmp.1.$ts
+     else
+       if( ! -e h${net}a.${yr[2]}${sday} && ! -e h${net}a.${yr[2]}${sday}.Z ) then
+         echo $getcmd h${net}a.${yr[2]}${sday}.Z >> tmp.1.$ts
+       endif 
+     endif
+   end
+
+   set num = `wc tmp.1.$ts`
+   if ( $num[1] > 1 ) then
+
+#   We need to get files; set up the ftp
+     if ( $soln_dir == 'YES' ) then
+       set directoryg = `echo $ftpdirg | sed s/"YYYY"/$yr[1]/ | sed s/"YY"/$yr[2]/ | sed s/"DDD"/${sday}/ | sed s/"SSSS"/${site}/ | sed s/"GPSW"/${gpsw}/ `
+       set directoryr = `echo $ftpdirr | sed s/"YYYY"/$yr[1]/ | sed s/"YY"/$yr[2]/ | sed s/"DDD"/${sday}/ | sed s/"SSSS"/${site}/ | sed s/"GPSW"/${gpsw}/ `
+       echo "cd ${directoryg}"  >> tmp.get.$ts
+       tail -n +2 tmp.1.$ts >> tmp.get.$ts
+       echo "cd ${directoryg}m"  >> tmp.get.$ts
+       tail -n +2 tmp.1.$ts >> tmp.get.$ts
+       echo "cd ${directoryr}a"  >> tmp.get.$ts
+       tail -n +2 tmp.1.$ts >> tmp.get.$ts
+       echo "cd ${directoryr}b"  >> tmp.get.$ts
+       tail -n +2 tmp.1.$ts >> tmp.get.$ts
+       echo "cd ${directoryr}e"  >> tmp.get.$ts
+       tail -n +2 tmp.1.$ts >> tmp.get.$ts
+       echo "cd ${directoryr}s"  >> tmp.get.$ts
+       tail -n +2 tmp.1.$ts >> tmp.get.$ts
+     else
+       set directory = `echo $ftpdir | sed s/"YYYY"/$yr[1]/ | sed s/"YY"/$yr[2]/ | sed s/"DDD"/${sday}/ | sed s/"SSSS"/${site}/ | sed s/"GPSW"/${gpsw}/ `
+       echo "cd $directory"  >> tmp.get.$ts
+       tail -n +2 tmp.1.$ts >> tmp.get.$ts
+     endif
+     echo 'quit' >> tmp.get.$ts
+     cat tmp.get.$ts >> $log
+     echo ' ' >> $log    
+     echo '--------------------' >> $log
+
+# MOD TAH 980520: Repeat the get.
+     set cnt = 5
+     set try = 0
+     while ( $cnt ) 
+       @ cnt = $cnt - 1
+       @ try = $try + 1
+       echo "Try ${try}: Getting hfiles for day ${sday} from ${ftpsite}"
+       echo "Networks being downloaded: ${netlist}" 
+       $ftpcmd < tmp.get.$ts | grep -v '^220' >! tmp.log.$ts
+       cat tmp.log.$ts >> $log
+      
+#      See if seems OK
+       grep 'Not connected' tmp.log.$ts >! tmp.test.$ts
+       set chk = `wc tmp.test.$ts`
+       if( $chk[1] == 0 ) then
+         set cnt = 0
+       else
+         sleep 600
+       endif
+     end
+      
+# Remove any zero length files.
+     (ls -s  h*a.${yr[2]}${sday} | awk '{if ( $1 == 0 ) {print "\\rm "$2}}' >! rm.cmd) >& /dev/null
+     csh rm.cmd
+
+   else
+   echo "All requested hfiles exist."
+   endif
+
+# End loop over days  
+end 
+
+# Tidy up a bit
+\rm tmp.1.$ts tmp.get.$ts tmp.log.$ts tmp.test.$ts rm.cmd >& /dev/null
+
+# Thats all.
+exit
+
