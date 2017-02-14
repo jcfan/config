@@ -88,3 +88,13 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 alias CRX2RNX="crx2rnx"
+
+
+setxkbmap -option "ctrl:swapcaps"
+
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8 
+
+
+export PYTHONPATH="$PYTHONPATH:/home/jcfan/Pro/work/analys2xyz:/home/jcfan/Pro/work/bdtpy:/home/jcfan/Pro/work/brd2xyz:/home/jcfan/Pro/work/coordpy:/home/jcfan/Pro/work/ftpy:/home/jcfan/Pro/work/SHfunc:/home/jcfan/Pro/work/readObsnew:/home/jcfan/Pro/work/code_smooth:/home/jcfan/Pro/work/loadDCB:/home/jcfan/Pro/work/loadrinex:/home/jcfan/Pro/work/clkdot:/home/jcfan/Pro/work/clkpara:/home/jcfan/Pro/work/CorrModel:/home/jcfan/Pro/work/Integrity:/home/jcfan/Pro/work/igpdelay"
+
